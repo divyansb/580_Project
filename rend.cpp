@@ -674,6 +674,79 @@ float GetInterpolatedValue(float x, float y, float interpParameters[4])
 	return newValue;
 }
 
+void GzRender::ShadingEquation(GzCoord norm, float color[3], GzColor texColor) {
+	GzCoord E = { 0, 0, -1 };
+	GzColor specSum = { 0, 0, 0 }, diffSum = { 0, 0, 0 };
+	// iterate through all the lights
+	for (int lt = 0; lt < 3; ++lt)
+	{
+		GzColor le = { lights[lt].color[0], lights[lt].color[1], lights[lt].color[2] };
+		GzCoord L = { lights[lt].direction[0], lights[lt].direction[1], lights[lt].direction[2] };
+
+		float NdotL = Vec3Dot(norm, L);
+		float NdotE = Vec3Dot(norm, E);
+
+		// N, E, R relative orientation checks
+		if (NdotE < 0 && NdotL < 0)
+		{
+			// flip the normal, set to -N
+			norm[0] = (-1)*norm[0];
+			norm[1] = (-1)*norm[1];
+			norm[2] = (-1)*norm[2];
+
+			NdotL = Vec3Dot(norm, L);
+			NdotE = Vec3Dot(norm, E);
+		}
+		else if (NdotL * NdotE < 0)
+		{
+			// Skip this light
+			continue;
+		}
+
+		// R = 2(N.L)N - L
+		GzCoord R = { 2 * NdotL*norm[0], 2 * NdotL*norm[1], 2 * NdotL*norm[2] };
+		CoordDiff(R, L);
+		float RdotE = Vec3Dot(R, E);
+
+		//Red
+		specSum[RED] += (le[RED] * pow(RdotE, spec));
+		diffSum[RED] += (le[RED] * NdotL);
+
+		//Green
+		specSum[GREEN] += (le[GREEN] * pow(RdotE, spec));
+		diffSum[GREEN] += (le[GREEN] * NdotL);
+
+		//Blue
+		specSum[BLUE] += (le[BLUE] * pow(RdotE, spec));
+		diffSum[BLUE] += (le[BLUE] * NdotL);
+
+	}
+	if (!tex_fun)
+	{
+		color[RED]   = (Ks[RED]   * specSum[RED]   + Kd[RED]   * diffSum[RED]   + Ka[RED]   * ambientlight.color[RED]);
+		color[GREEN] = (Ks[GREEN] * specSum[GREEN] + Kd[GREEN] * diffSum[GREEN] + Ka[GREEN] * ambientlight.color[GREEN]);
+		color[BLUE]  = (Ks[BLUE]  * specSum[BLUE]  + Kd[BLUE]  * diffSum[BLUE]  + Ka[BLUE]  * ambientlight.color[BLUE]);
+	}
+	else
+	{
+		if (interp_mode == GZ_COLOR)
+		{
+			color[RED]   = (specSum[RED]   + diffSum[RED]   + ambientlight.color[RED]);
+			color[GREEN] = (specSum[GREEN] + diffSum[GREEN] + ambientlight.color[GREEN]);
+			color[BLUE]  = (specSum[BLUE]  + diffSum[BLUE]  + ambientlight.color[BLUE]);
+		}
+		else
+		{
+			color[RED]   = (Ks[RED]   * specSum[RED]   + texColor[RED]   * diffSum[RED]   + texColor[RED]   * ambientlight.color[RED]);
+			color[GREEN] = (Ks[GREEN] * specSum[GREEN] + texColor[GREEN] * diffSum[GREEN] + texColor[GREEN] * ambientlight.color[GREEN]);
+			color[BLUE]  = (Ks[BLUE]  * specSum[BLUE]  + texColor[BLUE]  * diffSum[BLUE]  + texColor[BLUE]  * ambientlight.color[BLUE]);
+		}
+	}
+
+	clampvalue<float>(color[RED], 0, 1);
+	clampvalue<float>(color[GREEN], 0, 1);
+	clampvalue<float>(color[BLUE], 0, 1);
+}
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------//
 // HOMEWORK FUNCTIONS, PUT ATTRIB AND TRIANGLE	||
@@ -926,72 +999,15 @@ int GzRender::GzPutTriangle(int numParts, GzToken *nameList, GzPointer *valueLis
 	TransformCoord(vertexNormalPointer[2], Xnorm[matlevel]);
 	GzCoord E = { 0, 0, -1 };
 
-	// iterate through all the vertices of the triangle
-	for (int vert = 0; vert < 3; ++vert)
+	if (interp_mode == GZ_COLOR)
 	{
-		GzCoord N = { vertexNormalPointer[vert][X], vertexNormalPointer[vert][Y], vertexNormalPointer[vert][Z] };
-		GzColor specSum = { 0, 0, 0 }, diffSum = { 0, 0, 0 };
-		// iterate through all the vertices
-		for (int lt = 0; lt < numlights; ++lt)
+		// iterate through all the vertices of the triangle
+		for (int vert = 0; vert < 3; ++vert)
 		{
-			GzColor le = { lights[lt].color[RED], lights[lt].color[GREEN], lights[lt].color[BLUE] };
-			GzCoord L = { lights[lt].direction[X], lights[lt].direction[Y], lights[lt].direction[Z] };
-
-			float NdotL = Vec3Dot(N, L);
-			float NdotE = Vec3Dot(N, E);
-			// N, E, R relative orientation checks
-			if (NdotE < 0 && NdotL < 0)
-			{
-				// flip the normal, set to -N
-				N[0] = (-1)*N[0];
-				N[1] = (-1)*N[1];
-				N[2] = (-1)*N[2];
-
-				NdotL = Vec3Dot(N, L);
-				NdotE = Vec3Dot(N, E);
-			}
-			else if (NdotL * NdotE < 0)
-			{
-				// Skip this light
-				continue;
-			}
-
-			// R = 2(N.L)N - L
-			GzCoord R = { 2 * NdotL*N[X], 2 * NdotL*N[Y], 2 * NdotL*N[Z] };
-			CoordDiff(R, L);
-			float RdotE = Vec3Dot(R, E);
-
-			//Red
-			specSum[RED] += (le[RED] * pow(RdotE, spec));
-			diffSum[RED] += (le[RED] * NdotL);
-
-			//Green
-			specSum[GREEN] += (le[GREEN] * pow(RdotE, spec));
-			diffSum[GREEN] += (le[GREEN] * NdotL);
-
-			//Blue
-			specSum[BLUE] += (le[BLUE] * pow(RdotE, spec));
-			diffSum[BLUE] += (le[BLUE] * NdotL);
-
+			GzCoord N = { vertexNormalPointer[vert][X], vertexNormalPointer[vert][Y], vertexNormalPointer[vert][Z] };
+			ShadingEquation(N, vertexColors[vert]);
 		}
-		if (!tex_fun)
-		{
-			vertexColors[vert][RED] = (Ks[RED] * specSum[RED] + Kd[RED] * diffSum[RED] + Ka[RED] * ambientlight.color[RED]);
-			vertexColors[vert][GREEN] = (Ks[GREEN] * specSum[GREEN] + Kd[GREEN] * diffSum[GREEN] + Ka[GREEN] * ambientlight.color[GREEN]);
-			vertexColors[vert][BLUE] = (Ks[BLUE] * specSum[BLUE] + Kd[BLUE] * diffSum[BLUE] + Ka[BLUE] * ambientlight.color[BLUE]);
-		}
-		else
-		{
-			vertexColors[vert][RED] = (specSum[RED] + diffSum[RED] + ambientlight.color[RED]);
-			vertexColors[vert][GREEN] = (specSum[GREEN] + diffSum[GREEN] + ambientlight.color[GREEN]);
-			vertexColors[vert][BLUE] = (specSum[BLUE] + diffSum[BLUE] + ambientlight.color[BLUE]);
-		}
-
-		clampvalue<float>(vertexColors[vert][RED], 0, 1);
-		clampvalue<float>(vertexColors[vert][GREEN], 0, 1);
-		clampvalue<float>(vertexColors[vert][BLUE], 0, 1);
 	}
-
 
 #pragma endregion
 
@@ -1041,32 +1057,36 @@ int GzRender::GzPutTriangle(int numParts, GzToken *nameList, GzPointer *valueLis
 
 #pragma region Generate color interpolation parameters
 
-	GzCoord redVerts[3] =
-	{
-		{ vertexPositionPointer[0][X], vertexPositionPointer[0][Y], vertexColors[0][RED] },
-		{ vertexPositionPointer[1][X], vertexPositionPointer[1][Y], vertexColors[1][RED] },
-		{ vertexPositionPointer[2][X], vertexPositionPointer[2][Y], vertexColors[2][RED] },
-	};
 	float redInterpolationParameters[4];
-	GenerateInterPolationParameters(redVerts, redInterpolationParameters);
-
-	GzCoord greenVerts[3] =
-	{
-		{ vertexPositionPointer[0][X], vertexPositionPointer[0][Y], vertexColors[0][GREEN] },
-		{ vertexPositionPointer[1][X], vertexPositionPointer[1][Y], vertexColors[1][GREEN] },
-		{ vertexPositionPointer[2][X], vertexPositionPointer[2][Y], vertexColors[2][GREEN] },
-	};
 	float greenInterpolationParameters[4];
-	GenerateInterPolationParameters(greenVerts, greenInterpolationParameters);
-
-	GzCoord blueVerts[3] =
-	{
-		{ vertexPositionPointer[0][X], vertexPositionPointer[0][Y], vertexColors[0][BLUE] },
-		{ vertexPositionPointer[1][X], vertexPositionPointer[1][Y], vertexColors[1][BLUE] },
-		{ vertexPositionPointer[2][X], vertexPositionPointer[2][Y], vertexColors[2][BLUE] },
-	};
 	float blueInterpolationParameters[4];
-	GenerateInterPolationParameters(blueVerts, blueInterpolationParameters);
+
+	if (interp_mode == GZ_COLOR)
+	{
+		GzCoord redVerts[3] =
+		{
+			{ vertexPositionPointer[0][X], vertexPositionPointer[0][Y], vertexColors[0][RED] },
+			{ vertexPositionPointer[1][X], vertexPositionPointer[1][Y], vertexColors[1][RED] },
+			{ vertexPositionPointer[2][X], vertexPositionPointer[2][Y], vertexColors[2][RED] },
+		};
+		GenerateInterPolationParameters(redVerts, redInterpolationParameters);
+
+		GzCoord greenVerts[3] =
+		{
+			{ vertexPositionPointer[0][X], vertexPositionPointer[0][Y], vertexColors[0][GREEN] },
+			{ vertexPositionPointer[1][X], vertexPositionPointer[1][Y], vertexColors[1][GREEN] },
+			{ vertexPositionPointer[2][X], vertexPositionPointer[2][Y], vertexColors[2][GREEN] },
+		};
+		GenerateInterPolationParameters(greenVerts, greenInterpolationParameters);
+
+		GzCoord blueVerts[3] =
+		{
+			{ vertexPositionPointer[0][X], vertexPositionPointer[0][Y], vertexColors[0][BLUE] },
+			{ vertexPositionPointer[1][X], vertexPositionPointer[1][Y], vertexColors[1][BLUE] },
+			{ vertexPositionPointer[2][X], vertexPositionPointer[2][Y], vertexColors[2][BLUE] },
+		};
+		GenerateInterPolationParameters(blueVerts, blueInterpolationParameters);
+	}
 
 #pragma endregion
 
@@ -1159,68 +1179,16 @@ int GzRender::GzPutTriangle(int numParts, GzToken *nameList, GzPointer *valueLis
 					NormalizeVector(vertexNormal);
 
 #pragma region Compute color based on normal and lights
-					GzCoord E = { 0, 0, -1 };
-					GzColor specSum = { 0, 0, 0 }, diffSum = { 0, 0, 0 };
-					// iterate through all the lights
-					for (int lt = 0; lt < 3; ++lt)
+					
+					if (tex_fun)
 					{
-						GzColor le = { lights[lt].color[0], lights[lt].color[1], lights[lt].color[2] };
-						GzCoord L = { lights[lt].direction[0], lights[lt].direction[1], lights[lt].direction[2] };
-
-						float NdotL = Vec3Dot(vertexNormal, L);
-						float NdotE = Vec3Dot(vertexNormal, E);
-
-						// N, E, R relative orientation checks
-						if (NdotE < 0 && NdotL < 0)
-						{
-							// flip the normal, set to -N
-							vertexNormal[0] = (-1)*vertexNormal[0];
-							vertexNormal[1] = (-1)*vertexNormal[1];
-							vertexNormal[2] = (-1)*vertexNormal[2];
-
-							NdotL = Vec3Dot(vertexNormal, L);
-							NdotE = Vec3Dot(vertexNormal, E);
-						}
-						else if (NdotL * NdotE < 0)
-						{
-							// Skip this light
-							continue;
-						}
-
-						// R = 2(N.L)N - L
-						GzCoord R = { 2 * NdotL*vertexNormal[0], 2 * NdotL*vertexNormal[1], 2 * NdotL*vertexNormal[2] };
-						CoordDiff(R, L);
-						float RdotE = Vec3Dot(R, E);
-
-						//Red
-						specSum[RED] += (le[RED] * pow(RdotE, spec));
-						diffSum[RED] += (le[RED] * NdotL);
-
-						//Green
-						specSum[GREEN] += (le[GREEN] * pow(RdotE, spec));
-						diffSum[GREEN] += (le[GREEN] * NdotL);
-
-						//Blue
-						specSum[BLUE] += (le[BLUE] * pow(RdotE, spec));
-						diffSum[BLUE] += (le[BLUE] * NdotL);
-
-					}
-					if (!tex_fun)
-					{
-						pixelColor[RED] = (Ks[RED] * specSum[RED] + Kd[RED] * diffSum[RED] + Ka[RED] * ambientlight.color[RED]);
-						pixelColor[GREEN] = (Ks[GREEN] * specSum[GREEN] + Kd[GREEN] * diffSum[GREEN] + Ka[GREEN] * ambientlight.color[GREEN]);
-						pixelColor[BLUE] = (Ks[BLUE] * specSum[BLUE] + Kd[BLUE] * diffSum[BLUE] + Ka[BLUE] * ambientlight.color[BLUE]);
+						ShadingEquation(vertexNormal, pixelColor, texColor);
 					}
 					else
 					{
-						pixelColor[RED] = (Ks[RED] * specSum[RED] + texColor[RED] * diffSum[RED] + texColor[RED] * ambientlight.color[RED]);
-						pixelColor[GREEN] = (Ks[GREEN] * specSum[GREEN] + texColor[GREEN] * diffSum[GREEN] + texColor[GREEN] * ambientlight.color[GREEN]);
-						pixelColor[BLUE] = (Ks[BLUE] * specSum[BLUE] + texColor[BLUE] * diffSum[BLUE] + texColor[BLUE] * ambientlight.color[BLUE]);
-
+						ShadingEquation(vertexNormal, pixelColor);
 					}
-					clampvalue<float>(pixelColor[RED], 0, 1);
-					clampvalue<float>(pixelColor[GREEN], 0, 1);
-					clampvalue<float>(pixelColor[BLUE], 0, 1);
+
 #pragma endregion
 				}
 				else if (interp_mode == GZ_FLAT)

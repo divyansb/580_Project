@@ -81,5 +81,7 @@ public:
 	int GzTrxMat(GzCoord translate, GzMatrix mat);
 	int GzScaleMat(GzCoord scale, GzMatrix mat);
 
+	//Shading
+	void GzRender::ShadingEquation(GzCoord norm, float pixelColor[3], GzColor texColor = NULL);
 };
 #endif
