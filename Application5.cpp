@@ -145,13 +145,18 @@ int Application5::Initialize()
 		/*
 		 * Tokens associated with light parameters
 		 */
+		//nameListLights[0] = GZ_DIRECTIONAL_LIGHT;
+		//valueListLights[0] = (GzPointer)&light1;
+		//nameListLights[1] = GZ_DIRECTIONAL_LIGHT;
+		//valueListLights[1] = (GzPointer)&light2;
+		//nameListLights[2] = GZ_DIRECTIONAL_LIGHT;
+		//valueListLights[2] = (GzPointer)&light3;
+
+		//just do one light for toon shading testing
 		nameListLights[0] = GZ_DIRECTIONAL_LIGHT;
 		valueListLights[0] = (GzPointer)&light1;
-		nameListLights[1] = GZ_DIRECTIONAL_LIGHT;
-		valueListLights[1] = (GzPointer)&light2;
-		nameListLights[2] = GZ_DIRECTIONAL_LIGHT;
-		valueListLights[2] = (GzPointer)&light3;
-		status |= aaRenders[rendIt]->GzPutAttribute(3, nameListLights, valueListLights);
+
+		status |= aaRenders[rendIt]->GzPutAttribute(1, nameListLights, valueListLights);
 
 		nameListLights[0] = GZ_AMBIENT_LIGHT;
 		valueListLights[0] = (GzPointer)&ambientlight;
@@ -180,7 +185,7 @@ int Application5::Initialize()
 		valueListShader[4] = (GzPointer)&specpower;
 
 		nameListShader[5] = GZ_TEXTURE_MAP;
-#if 0  /* set up null texture function or valid pointer */
+#if 1  /* set up null texture function or valid pointer */
 		valueListShader[5] = (GzPointer)0;
 #else
 		valueListShader[5] = (GzPointer)(tex_fun);	/* or use ptex_fun */

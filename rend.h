@@ -45,6 +45,10 @@ public:
 	float yOffset;
 	float weight;
 
+	//Non-photo realistic shading
+	bool vanillaToonShade = true;
+	float vanillaToonTexture[10];
+
   	// Constructors
 	GzRender(int xRes, int yRes);
 	~GzRender();
@@ -83,5 +87,6 @@ public:
 
 	//Shading
 	void GzRender::ShadingEquation(GzCoord norm, float pixelColor[3], GzColor texColor = NULL);
+	void GzRender::VanillaToonShadingEquation(GzCoord norm, float color[3], GzColor texColor = NULL);
 };
 #endif

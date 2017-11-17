@@ -317,6 +317,27 @@ GzRender::GzRender(int xRes, int yRes)
 
 	// Init number of lights 
 	this->numlights = 0;
+
+	//init 1D toon texture
+	for(int i = 0; i < 10; i++)
+	{
+		if (i < 1)
+		{
+			vanillaToonTexture[i] = 0.0f;
+		}
+		else if (i < 3)
+		{
+			vanillaToonTexture[i] = 0.5f;
+		}
+		//else if (i < 8)
+		//{
+		//	vanillaToonTexture[i] = 0.7f;
+		//}
+		else
+		{
+			vanillaToonTexture[i] = 1.0f;
+		}
+	}
 }
 
 GzRender::~GzRender()
@@ -748,6 +769,82 @@ void GzRender::ShadingEquation(GzCoord norm, float color[3], GzColor texColor) {
 	clampvalue<float>(color[BLUE], 0, 1);
 }
 
+void GzRender::VanillaToonShadingEquation(GzCoord norm, float color[3], GzColor texColor) {
+	GzCoord E = { 0, 0, -1 };
+	GzColor specSum = { 0, 0, 0 }, diffSum = { 0, 0, 0 };
+	// iterate through all the lights
+	for (int lt = 0; lt < numlights; ++lt)
+	{
+		GzColor le = { lights[lt].color[0], lights[lt].color[1], lights[lt].color[2] };
+		GzCoord L = { lights[lt].direction[0], lights[lt].direction[1], lights[lt].direction[2] };
+
+		float NdotL = Vec3Dot(norm, L);
+		float NdotE = Vec3Dot(norm, E);
+
+		// N, E, R relative orientation checks
+		if (NdotE < 0 && NdotL < 0)
+		{
+			// flip the normal, set to -N
+			norm[0] = (-1)*norm[0];
+			norm[1] = (-1)*norm[1];
+			norm[2] = (-1)*norm[2];
+
+			NdotL = Vec3Dot(norm, L);
+			NdotE = Vec3Dot(norm, E);
+		}
+		else if (NdotL * NdotE < 0)
+		{
+			// Skip this light
+			continue;
+		}
+
+		// R = 2(N.L)N - L
+		GzCoord R = { 2 * NdotL*norm[0], 2 * NdotL*norm[1], 2 * NdotL*norm[2] };
+		CoordDiff(R, L);
+		float RdotE = Vec3Dot(R, E);
+
+		int toonIndex = NdotL * 10;
+
+		//Red
+		specSum[RED] += (le[RED] * pow(RdotE, spec));
+		diffSum[RED] += (le[RED] * vanillaToonTexture[toonIndex]);
+
+		//Green
+		specSum[GREEN] += (le[GREEN] * pow(RdotE, spec));
+		diffSum[GREEN] += (le[GREEN] * vanillaToonTexture[toonIndex]);
+
+		//Blue
+		specSum[BLUE] += (le[BLUE] * pow(RdotE, spec));
+		diffSum[BLUE] += (le[BLUE] * vanillaToonTexture[toonIndex]);
+
+	}
+	if (!tex_fun)
+	{
+		color[RED] = (Ks[RED] * specSum[RED] + Kd[RED] * diffSum[RED] + Ka[RED] * ambientlight.color[RED]);
+		color[GREEN] = (Ks[GREEN] * specSum[GREEN] + Kd[GREEN] * diffSum[GREEN] + Ka[GREEN] * ambientlight.color[GREEN]);
+		color[BLUE] = (Ks[BLUE] * specSum[BLUE] + Kd[BLUE] * diffSum[BLUE] + Ka[BLUE] * ambientlight.color[BLUE]);
+	}
+	else
+	{
+		if (interp_mode == GZ_COLOR)
+		{
+			color[RED] = (specSum[RED] + diffSum[RED] + ambientlight.color[RED]);
+			color[GREEN] = (specSum[GREEN] + diffSum[GREEN] + ambientlight.color[GREEN]);
+			color[BLUE] = (specSum[BLUE] + diffSum[BLUE] + ambientlight.color[BLUE]);
+		}
+		else
+		{
+			color[RED] = (Ks[RED] * specSum[RED] + texColor[RED] * diffSum[RED] + texColor[RED] * ambientlight.color[RED]);
+			color[GREEN] = (Ks[GREEN] * specSum[GREEN] + texColor[GREEN] * diffSum[GREEN] + texColor[GREEN] * ambientlight.color[GREEN]);
+			color[BLUE] = (Ks[BLUE] * specSum[BLUE] + texColor[BLUE] * diffSum[BLUE] + texColor[BLUE] * ambientlight.color[BLUE]);
+		}
+	}
+
+	clampvalue<float>(color[RED], 0, 1);
+	clampvalue<float>(color[GREEN], 0, 1);
+	clampvalue<float>(color[BLUE], 0, 1);
+}
+
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------//
 // HOMEWORK FUNCTIONS, PUT ATTRIB AND TRIANGLE	||
 //----------------------------------------------//
@@ -1005,7 +1102,14 @@ int GzRender::GzPutTriangle(int numParts, GzToken *nameList, GzPointer *valueLis
 		for (int vert = 0; vert < 3; ++vert)
 		{
 			GzCoord N = { vertexNormalPointer[vert][X], vertexNormalPointer[vert][Y], vertexNormalPointer[vert][Z] };
-			ShadingEquation(N, vertexColors[vert]);
+			if (vanillaToonShade)
+			{
+				VanillaToonShadingEquation(N, vertexColors[vert]);
+			}
+			else
+			{
+				ShadingEquation(N, vertexColors[vert]);
+			}
 		}
 	}
 
@@ -1180,14 +1284,29 @@ int GzRender::GzPutTriangle(int numParts, GzToken *nameList, GzPointer *valueLis
 
 #pragma region Compute color based on normal and lights
 					
-					if (tex_fun)
+					if (vanillaToonShade)
 					{
-						ShadingEquation(vertexNormal, pixelColor, texColor);
+						if (tex_fun)
+						{
+							VanillaToonShadingEquation(vertexNormal, pixelColor, texColor);
+						}
+						else
+						{
+							VanillaToonShadingEquation(vertexNormal, pixelColor);
+						}
 					}
 					else
 					{
-						ShadingEquation(vertexNormal, pixelColor);
+						if (tex_fun)
+						{
+							ShadingEquation(vertexNormal, pixelColor, texColor);
+						}
+						else
+						{
+							ShadingEquation(vertexNormal, pixelColor);
+						}
 					}
+
 
 #pragma endregion
 				}
