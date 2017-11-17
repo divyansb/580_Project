@@ -136,6 +136,7 @@
     <ClCompile Include="CS580HW.cpp" />
     <ClCompile Include="CS580HWDoc.cpp" />
     <ClCompile Include="CS580HWView.cpp" />
+    <ClCompile Include="GeneralHelpers.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="rend.cpp" />
     <ClCompile Include="RotateDlg.cpp" />
@@ -158,6 +159,7 @@
     <ClInclude Include="CS580HW.h" />
     <ClInclude Include="CS580HWDoc.h" />
     <ClInclude Include="CS580HWView.h" />
+    <ClInclude Include="GeneralHelpers.h" />
     <ClInclude Include="gz.h" />
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="rend.h" />

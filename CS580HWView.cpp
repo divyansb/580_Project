@@ -207,6 +207,9 @@ void CCS580HWView::OnRotate()
 	input->rotation[0] = input->rotation[1] = input->rotation[2] = 0;
 	dlg.Initialize(input->rotation[0], input->rotation[1], input->rotation[2]);
 
+	ASSERT(static_cast<Application5*>(m_pApplication));
+	Application5* m_app = static_cast<Application5*>(m_pApplication);
+
 	if(dlg.DoModal() == IDOK)
 	{
 		// Update input rotation value
@@ -218,19 +221,25 @@ void CCS580HWView::OnRotate()
 		case 0 :
 			// Create matrix for Rot X
 			m_pApplication->m_pRender->GzRotXMat(input->rotation[0], rotMat);
+	
 			break;
 		case 1:
 			// Create matrix for Rot Y
-			m_pApplication->m_pRender->GzRotYMat(input->rotation[1], rotMat);
+			 m_pApplication->m_pRender->GzRotYMat(input->rotation[1], rotMat);
+
 			break;
 		case 2:
 			// Create matrix for Rot Z
 			m_pApplication->m_pRender->GzRotZMat(input->rotation[2], rotMat);
+
 			break;
 		}
 
 		// Accumulate matrix
-		m_pApplication->m_pRender->GzPushMatrix(rotMat); 
+		for (int rendIt = 0; rendIt < AAKERNEL_SIZE; ++rendIt)
+		{
+			m_app->aaRenders[rendIt]->GzPushMatrix(rotMat);
+		}
 	}
 }
 
@@ -254,6 +263,9 @@ void CCS580HWView::OnTranslate()
 	input = m_pApplication->m_pUserInput;
 	if(input == NULL) return;
 
+	ASSERT(static_cast<Application5*>(m_pApplication));
+	Application5* m_app = static_cast<Application5*>(m_pApplication);
+
 	// Initialize
 	input->translation[0] = input->translation[1] = input->translation[2] = 0;
 	dlg.Initialize(input->translation[0], input->translation[1], input->translation[2]);
@@ -267,7 +279,10 @@ void CCS580HWView::OnTranslate()
 		m_pApplication->m_pRender->GzTrxMat(input->translation, trxMat);
 
 		// Accumulate matrix
-		m_pApplication->m_pRender->GzPushMatrix(trxMat); 
+		for (int rendIt = 0; rendIt < AAKERNEL_SIZE; ++rendIt)
+		{
+			m_app->aaRenders[rendIt]->GzPushMatrix(trxMat);
+		}
 	}
 }
 
@@ -291,6 +306,9 @@ void CCS580HWView::OnScale()
 	input = m_pApplication->m_pUserInput;
 	if(input == NULL) return;
 
+	ASSERT(static_cast<Application5*>(m_pApplication));
+	Application5* m_app = static_cast<Application5*>(m_pApplication);
+
 	// Initialize
 	input->scale[0] = input->scale[1] = input->scale[2] = 1;
 	dlg.Initialize(input->scale[0], input->scale[1], input->scale[2]);
@@ -304,6 +322,9 @@ void CCS580HWView::OnScale()
 		m_pApplication->m_pRender->GzScaleMat(input->scale, scaleMat);
 
 		// Accumulate matrix
-		m_pApplication->m_pRender->GzPushMatrix(scaleMat); 
+		for (int rendIt = 0; rendIt < AAKERNEL_SIZE; ++rendIt)
+		{
+			m_app->aaRenders[rendIt]->GzPushMatrix(scaleMat);
+		}
 	}
 }
