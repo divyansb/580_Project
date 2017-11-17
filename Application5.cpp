@@ -11,6 +11,7 @@
 #include "Application5.h"
 #include "Gz.h"
 #include "rend.h"
+#include "GeneralHelpers.h"
 
 #ifdef _DEBUG
 #undef THIS_FILE
@@ -32,9 +33,10 @@ void shade(GzCoord norm, GzCoord color);
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
+
 Application5::Application5()
 {
-
+	
 }
 
 Application5::~Application5()
@@ -314,10 +316,19 @@ int Application5::Render()
 				m_pRender->pixelbuffer[ARRAY(xit, yit, m_nWidth)].blue += (AAFilter[renIt][2] * aaRenders[renIt]->pixelbuffer[ARRAY(xit, yit, m_nWidth)].blue);
 			}
 		}
+	} 
+
+	// Set matlevel and matrix buffers for the final buffer
+	m_pRender->matlevel = aaRenders[0]->matlevel;
+	for (int it = 0; it <= m_pRender->matlevel; ++it)
+	{
+		CopyMatrix(aaRenders[0]->Ximage[it], m_pRender->Ximage[it]);
+		CopyMatrix(aaRenders[0]->Xnorm[it], m_pRender->Xnorm[it]);
 	}
 
-	m_pRender->GzFlushDisplay2File(outfile); 	/* write out or update display to file*/
-	m_pRender->GzFlushDisplay2FrameBuffer();	// write out or update display to frame buffer
+	// Flush final renderer buffer to frame buffer or the screen
+	m_pRender->GzFlushDisplay2File(outfile); 	
+	m_pRender->GzFlushDisplay2FrameBuffer();	
 
 	/* 
 	 * Close file
