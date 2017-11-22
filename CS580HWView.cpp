@@ -220,18 +220,24 @@ void CCS580HWView::OnRotate()
 		{
 		case 0 :
 			// Create matrix for Rot X
-			m_pApplication->m_pRender->GzRotXMat(input->rotation[0], rotMat);
-	
+			for (int rendIt = 0; rendIt < AAKERNEL_SIZE; ++rendIt)
+			{
+				m_app->aaRenders[rendIt]->GzRotXMat(input->rotation[0], rotMat);
+			}
 			break;
 		case 1:
 			// Create matrix for Rot Y
-			 m_pApplication->m_pRender->GzRotYMat(input->rotation[1], rotMat);
-
+			for (int rendIt = 0; rendIt < AAKERNEL_SIZE; ++rendIt)
+			{
+				m_app->aaRenders[rendIt]->GzRotYMat(input->rotation[1], rotMat);
+			}
 			break;
 		case 2:
 			// Create matrix for Rot Z
-			m_pApplication->m_pRender->GzRotZMat(input->rotation[2], rotMat);
-
+			for (int rendIt = 0; rendIt < AAKERNEL_SIZE; ++rendIt)
+			{
+				m_app->aaRenders[rendIt]->GzRotZMat(input->rotation[2], rotMat);
+			}
 			break;
 		}
 
@@ -275,12 +281,10 @@ void CCS580HWView::OnTranslate()
 		// Update input translation value
 		input->translation[0] = dlg.m_fTx; input->translation[1] = dlg.m_fTy; input->translation[2] = dlg.m_fTz;
 
-		//  Create Translation Matrix
-		m_pApplication->m_pRender->GzTrxMat(input->translation, trxMat);
-
 		// Accumulate matrix
 		for (int rendIt = 0; rendIt < AAKERNEL_SIZE; ++rendIt)
 		{
+			m_app->aaRenders[rendIt]->GzTrxMat(input->translation, trxMat);
 			m_app->aaRenders[rendIt]->GzPushMatrix(trxMat);
 		}
 	}
@@ -318,12 +322,10 @@ void CCS580HWView::OnScale()
 		// Update input scale value
 		input->scale[0] = dlg.m_fSx; input->scale[1] = dlg.m_fSy; input->scale[2] = dlg.m_fSz;
 
-		//  Create Scaling Matrix
-		m_pApplication->m_pRender->GzScaleMat(input->scale, scaleMat);
-
 		// Accumulate matrix
 		for (int rendIt = 0; rendIt < AAKERNEL_SIZE; ++rendIt)
 		{
+			m_app->aaRenders[rendIt]->GzScaleMat(input->scale, scaleMat);
 			m_app->aaRenders[rendIt]->GzPushMatrix(scaleMat);
 		}
 	}
