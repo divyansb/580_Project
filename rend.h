@@ -17,6 +17,15 @@
 #define	MATLEVELS	100		/* how many matrix pushes allowed */
 #define	MAX_LIGHTS	10		/* how many lights allowed */
 
+enum class ToonShadingType
+{
+	None,
+	Vanilla,
+	XToon_SilhouetteAbstraction,
+	XToon_Backlighting,
+	XToon_Opacity
+};
+
 
 class GzRender{			/* define a renderer */
   
@@ -38,8 +47,10 @@ public:
 	GzLight		lights[MAX_LIGHTS];
 	GzLight		ambientlight;
 	GzColor		Ka, Kd, Ks;
+	GzColor		BgColor = {0.5f, 0.5f, 0.7f};
 	float		    spec;		/* specular power */
 	GzTexture		tex_fun;    /* tex_fun(float u, float v, GzColor color) */
+	GzTexture		toonTex_fun;
 
 	// Homework 6; offsets and weights
 	float xOffset;
@@ -47,8 +58,9 @@ public:
 	float weight;
 
 	//Non-photo realistic shading
-	bool vanillaToonShade = true;
+	bool vanillaToonShade = false;
 	float vanillaToonTexture[10];
+	ToonShadingType currentToonType = ToonShadingType::XToon_Backlighting;
 
   	// Constructors
 	GzRender(int xRes, int yRes);
@@ -89,5 +101,6 @@ public:
 	//Shading
 	void GzRender::ShadingEquation(GzCoord norm, float pixelColor[3], GzColor texColor = NULL);
 	void GzRender::VanillaToonShadingEquation(GzCoord norm, float color[3], GzColor texColor = NULL);
+	void GzRender::XToonShadingEquation(GzCoord norm, float color[3], ToonShadingType toonShadingType);
 };
 #endif

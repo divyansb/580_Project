@@ -34,6 +34,7 @@
 #define GZ_DISTRIBUTION_COEFFICIENT	1004	/* specular power of material */
 
 #define	GZ_TEXTURE_MAP			1010	/* pointer to texture routine */
+#define GZ_TOON_TEX_MAP			1011	/* pointer to the toon texture lookup function */
 
 /*
  * flags fields for value list attributes

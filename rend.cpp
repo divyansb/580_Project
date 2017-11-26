@@ -189,19 +189,15 @@ GzRender::GzRender(int xRes, int yRes)
 	{
 		if (i < 1)
 		{
-			vanillaToonTexture[i] = 0.0f;
+			vanillaToonTexture[i] = 0.3f;
 		}
 		else if (i < 3)
 		{
 			vanillaToonTexture[i] = 0.5f;
 		}
-		//else if (i < 8)
-		//{
-		//	vanillaToonTexture[i] = 0.7f;
-		//}
 		else
 		{
-			vanillaToonTexture[i] = 1.0f;
+			vanillaToonTexture[i] = 0.7f;
 		}
 	}
 }
@@ -223,9 +219,9 @@ int GzRender::GzDefault()
 	for (int pixelIndex_X = 0; pixelIndex_X < this->xres; pixelIndex_X++)
 		for (int pixelIndex_Y = 0; pixelIndex_Y < this->xres; pixelIndex_Y++)
 		{
-			pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].red = 3000;
-			pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].green = 3000;
-			pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].blue = 3500;
+			pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].red = ctoi(BgColor[RED]);
+			pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].green = ctoi(BgColor[GREEN]);
+			pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].blue = ctoi(BgColor[BLUE]);
 			pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].alpha = 1;
 			pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].z = MAXINT;
 		}
@@ -565,7 +561,7 @@ void GzRender::ShadingEquation(GzCoord norm, float color[3], GzColor texColor) {
 	GzCoord E = { 0, 0, -1 };
 	GzColor specSum = { 0, 0, 0 }, diffSum = { 0, 0, 0 };
 	// iterate through all the lights
-	for (int lt = 0; lt < 3; ++lt)
+	for (int lt = 0; lt < numlights; ++lt)
 	{
 		GzColor le = { lights[lt].color[0], lights[lt].color[1], lights[lt].color[2] };
 		GzCoord L = { lights[lt].direction[0], lights[lt].direction[1], lights[lt].direction[2] };
@@ -610,6 +606,7 @@ void GzRender::ShadingEquation(GzCoord norm, float color[3], GzColor texColor) {
 	}
 	if (!tex_fun)
 	{
+		// No texure function, calculate full color at the vertices
 		color[RED]   = (Ks[RED]   * specSum[RED]   + Kd[RED]   * diffSum[RED]   + Ka[RED]   * ambientlight.color[RED]);
 		color[GREEN] = (Ks[GREEN] * specSum[GREEN] + Kd[GREEN] * diffSum[GREEN] + Ka[GREEN] * ambientlight.color[GREEN]);
 		color[BLUE]  = (Ks[BLUE]  * specSum[BLUE]  + Kd[BLUE]  * diffSum[BLUE]  + Ka[BLUE]  * ambientlight.color[BLUE]);
@@ -618,12 +615,14 @@ void GzRender::ShadingEquation(GzCoord norm, float color[3], GzColor texColor) {
 	{
 		if (interp_mode == GZ_COLOR)
 		{
+			// Gouraud, compute the intermediate value to be used at the pixels with texture color
 			color[RED]   = (specSum[RED]   + diffSum[RED]   + ambientlight.color[RED]);
 			color[GREEN] = (specSum[GREEN] + diffSum[GREEN] + ambientlight.color[GREEN]);
 			color[BLUE]  = (specSum[BLUE]  + diffSum[BLUE]  + ambientlight.color[BLUE]);
 		}
 		else
 		{
+			// Phong, compute the color at the pixels as the full color using the texture color and lights; same will be done at all the pixels
 			color[RED]   = (Ks[RED]   * specSum[RED]   + texColor[RED]   * diffSum[RED]   + texColor[RED]   * ambientlight.color[RED]);
 			color[GREEN] = (Ks[GREEN] * specSum[GREEN] + texColor[GREEN] * diffSum[GREEN] + texColor[GREEN] * ambientlight.color[GREEN]);
 			color[BLUE]  = (Ks[BLUE]  * specSum[BLUE]  + texColor[BLUE]  * diffSum[BLUE]  + texColor[BLUE]  * ambientlight.color[BLUE]);
@@ -671,16 +670,20 @@ void GzRender::VanillaToonShadingEquation(GzCoord norm, float color[3], GzColor 
 
 		int toonIndex = NdotL * 10;
 
+		// Toon specular adjust
+		float toonSpec = pow(RdotE, spec);
+		toonSpec = (toonSpec > 0.1) ? 1 : 0;
+
 		//Red
-		specSum[RED] += (le[RED] * pow(RdotE, spec));
+		specSum[RED] += (le[RED] * toonSpec);
 		diffSum[RED] += (le[RED] * vanillaToonTexture[toonIndex]);
 
 		//Green
-		specSum[GREEN] += (le[GREEN] * pow(RdotE, spec));
+		specSum[GREEN] += (le[GREEN] * toonSpec);
 		diffSum[GREEN] += (le[GREEN] * vanillaToonTexture[toonIndex]);
 
 		//Blue
-		specSum[BLUE] += (le[BLUE] * pow(RdotE, spec));
+		specSum[BLUE] += (le[BLUE] * toonSpec);
 		diffSum[BLUE] += (le[BLUE] * vanillaToonTexture[toonIndex]);
 
 	}
@@ -704,6 +707,117 @@ void GzRender::VanillaToonShadingEquation(GzCoord norm, float color[3], GzColor 
 			color[GREEN] = (Ks[GREEN] * specSum[GREEN] + texColor[GREEN] * diffSum[GREEN] + texColor[GREEN] * ambientlight.color[GREEN]);
 			color[BLUE] = (Ks[BLUE] * specSum[BLUE] + texColor[BLUE] * diffSum[BLUE] + texColor[BLUE] * ambientlight.color[BLUE]);
 		}
+	}
+
+
+	// if n dot E is small enough, it's probably a silhouette edge to be outlined
+	float NdotE = Vec3Dot(norm, E);
+	NdotE = (NdotE < 0) ? (NdotE * (-1)) : NdotE;
+
+	if (NdotE < 0.5)
+	{
+		color[RED] = 0;
+		color[GREEN] = 0;
+		color[BLUE] = 0;
+	}
+
+
+	clampvalue<float>(color[RED], 0, 1);
+	clampvalue<float>(color[GREEN], 0, 1);
+	clampvalue<float>(color[BLUE], 0, 1);
+}
+
+
+float ComputeDetailForToonTexLookup(float ndote, float r)
+{
+	// Doing  orientation based computation to start with
+	float D = ndote;
+	D = (D < 0) ? ((-1)* D) : D;
+	D = pow(D, r);
+
+	return D;
+}
+
+
+void GzRender::XToonShadingEquation(GzCoord norm, float color[3], ToonShadingType toonShadingType)
+{
+	GzCoord E = { 0, 0, -1 };
+	GzColor specular = { 0, 0, 0 }, diffuse = { 0, 0, 0 };
+
+	GzColor le = { lights[0].color[0], lights[0].color[1], lights[0].color[2] };
+	GzCoord L = { lights[0].direction[0], lights[0].direction[1], lights[0].direction[2] };
+
+	float NdotL = Vec3Dot(norm, L);
+	float NdotE = Vec3Dot(norm, E);
+
+	// N, E, R relative orientation checks
+	if (NdotE < 0 && NdotL < 0)
+	{
+		// flip the normal, set to -N
+		norm[0] = (-1)*norm[0];
+		norm[1] = (-1)*norm[1];
+		norm[2] = (-1)*norm[2];
+
+		NdotL = Vec3Dot(norm, L);
+		NdotE = Vec3Dot(norm, E);
+	}
+
+	// R = 2(N.L)N - L
+	GzCoord R = { 2 * NdotL*norm[0], 2 * NdotL*norm[1], 2 * NdotL*norm[2] };
+	CoordDiff(R, L);
+	float RdotE = Vec3Dot(R, E);
+
+	int toonIndex = NdotL * 10;
+	
+	// Compute D as the other parameter to do toon texture lookup.
+	float D = ComputeDetailForToonTexLookup(NdotE, 2);
+
+	GzColor toonTexLookupColor;
+	switch (toonShadingType)
+	{
+	case ToonShadingType::None:
+		toonTexLookupColor[RED] = 1;
+		break;
+	case ToonShadingType::Vanilla:
+		toonTexLookupColor[RED] = 2;
+		break;
+	case ToonShadingType::XToon_SilhouetteAbstraction:
+		toonTexLookupColor[RED] = 3;
+		break;
+	case ToonShadingType::XToon_Backlighting:
+		toonTexLookupColor[RED] = 4;
+		break;
+	case ToonShadingType::XToon_Opacity:
+		toonTexLookupColor[RED] = 5;
+		break;
+	default:
+		ASSERT(1);	// something went wrong!
+		break;
+	}
+	toonTex_fun(1 - NdotL, 1 - D, toonTexLookupColor);
+
+	if (toonShadingType == ToonShadingType::XToon_Opacity)
+	{
+		// Instead of using a pure opacity, use percentage of background color on the image
+		float percentageBackground[3] = { toonTexLookupColor[RED], toonTexLookupColor[GREEN], toonTexLookupColor[BLUE] };
+		float percentageTexture[3] = { 1 - toonTexLookupColor[RED], 1 - toonTexLookupColor[GREEN], 1 - toonTexLookupColor[BLUE] };
+
+		GzColor vanillaToonShadeColor;
+		VanillaToonShadingEquation(norm, vanillaToonShadeColor);
+
+		color[RED] = percentageTexture[RED] * vanillaToonShadeColor[RED] + percentageBackground[RED] * BgColor[RED];
+		color[GREEN] = percentageTexture[GREEN] * vanillaToonShadeColor[GREEN] + percentageBackground[GREEN] * BgColor[GREEN];
+		color[BLUE] = percentageTexture[BLUE] * vanillaToonShadeColor[BLUE] + percentageBackground[BLUE] * BgColor[BLUE];
+	}
+	else
+	{
+		// Toon specular adjust
+		float toonSpec = pow(RdotE, spec);
+		toonSpec = (toonSpec > 0.1) ? 1 : 0;
+
+		color[RED] = toonTexLookupColor[RED];
+		color[GREEN] = toonTexLookupColor[GREEN];
+		color[BLUE] = toonTexLookupColor[BLUE];
 	}
 
 	clampvalue<float>(color[RED], 0, 1);
@@ -844,6 +958,17 @@ int GzRender::GzPutAttribute(int numAttributes, GzToken	*nameList, GzPointer *va
 				tex_fun = nullptr;
 			}
 		}
+		case GZ_TOON_TEX_MAP:
+		{
+			if (valueList[attributeIterator])
+			{
+				this->toonTex_fun = static_cast<GzTexture>(valueList[attributeIterator]);
+			}
+			else
+			{
+				toonTex_fun = nullptr;
+			}
+		}
 		default:
 			break;
 		}
@@ -968,13 +1093,17 @@ int GzRender::GzPutTriangle(int numParts, GzToken *nameList, GzPointer *valueLis
 		for (int vert = 0; vert < 3; ++vert)
 		{
 			GzCoord N = { vertexNormalPointer[vert][X], vertexNormalPointer[vert][Y], vertexNormalPointer[vert][Z] };
-			if (vanillaToonShade)
+			switch (currentToonType)
 			{
+			case ToonShadingType::Vanilla:
 				VanillaToonShadingEquation(N, vertexColors[vert]);
-			}
-			else
-			{
+				break;
+			case ToonShadingType::None:
 				ShadingEquation(N, vertexColors[vert]);
+				break;
+			default:
+				XToonShadingEquation(N, vertexColors[vert], currentToonType);
+				break;
 			}
 		}
 	}
@@ -1148,30 +1277,41 @@ int GzRender::GzPutTriangle(int numParts, GzToken *nameList, GzPointer *valueLis
 					vertexNormal[Z] = GetInterpolatedValue(xiterator, yiterator, nzInterpolationParameters);
 					NormalizeVector(vertexNormal);
 
-#pragma region Compute color based on normal and lights
+#pragma region Compute color based on current shading type
 					
-					if (vanillaToonShade)
+					switch (currentToonType)
 					{
-						if (tex_fun)
+						case ToonShadingType::Vanilla:
 						{
-							VanillaToonShadingEquation(vertexNormal, pixelColor, texColor);
+							if (tex_fun)
+							{
+								VanillaToonShadingEquation(vertexNormal, pixelColor, texColor);
+							}
+							else
+							{
+								VanillaToonShadingEquation(vertexNormal, pixelColor);
+							}
 						}
-						else
+						break;
+						case ToonShadingType::None:
 						{
-							VanillaToonShadingEquation(vertexNormal, pixelColor);
+							if (tex_fun)
+							{
+								ShadingEquation(vertexNormal, pixelColor, texColor);
+							}
+							else
+							{
+								ShadingEquation(vertexNormal, pixelColor);
+							}
 						}
+						break;
+						default:
+						{
+							XToonShadingEquation(vertexNormal, pixelColor, currentToonType);
+						}
+						break;
 					}
-					else
-					{
-						if (tex_fun)
-						{
-							ShadingEquation(vertexNormal, pixelColor, texColor);
-						}
-						else
-						{
-							ShadingEquation(vertexNormal, pixelColor);
-						}
-					}
+					
 
 
 #pragma endregion
