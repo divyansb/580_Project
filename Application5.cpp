@@ -325,6 +325,9 @@ int Application5::Render()
 			}
 		}
 	} 
+	
+	if (m_pRender->currentToonType == ToonShadingType::XToon_Backlighting || m_pRender->currentToonType == ToonShadingType::Vanilla)
+		m_pRender->OutlineForToonShading();
 
 	// Set matlevel and matrix buffers for the final buffer
 	m_pRender->matlevel = aaRenders[0]->matlevel;

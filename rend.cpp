@@ -727,6 +727,59 @@ void GzRender::VanillaToonShadingEquation(GzCoord norm, float color[3], GzColor 
 	clampvalue<float>(color[BLUE], 0, 1);
 }
 
+void GzRender::OutlineForToonShading() {
+	GzPixel		*bwpixelbuffer = new GzPixel[xres * yres];
+	int hx = 0;
+	int hy = 0;
+	float gradient = 0;
+	float tita = 0;
+	int xSobelOperator[3][3] = {
+		-1,		0,		1,
+		-2,		0,		2,
+		-1,		0,		1
+	};
+	int ySobelOperator[3][3] = {
+		-1,		-2,		-1,
+		0,		0,		0,
+		1,		2,		1
+	};
+
+	//converting image to grayscale
+	for (int pixelIndex_X = 0; pixelIndex_X < this->xres; pixelIndex_X++)
+	{
+		for (int pixelIndex_Y = 0; pixelIndex_Y < this->xres; pixelIndex_Y++)
+		{
+			bwpixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].red = 0.21*pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].red + 0.72*pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].green + 0.07*pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].blue;
+			bwpixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].green = 0.21*pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].red + 0.72*pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].green + 0.07*pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].blue;
+			bwpixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].blue = 0.21*pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].red + 0.72*pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].green + 0.07*pixelbuffer[ARRAY(pixelIndex_X, pixelIndex_Y)].blue;
+		}
+	}
+
+	for (int x = 0; x < this->xres - 3; x++)
+	{
+		for (int y = 0; y < this->xres - 3; y++)
+		{
+			hx = 0;
+			hy = 0;
+			for (int i = 0; i < 3; i++)
+			{
+				for (int j = 0; j < 3; j++)
+				{
+					hx += xSobelOperator[i][j] * bwpixelbuffer[ARRAY(x + i, y + j)].red;
+					hy += ySobelOperator[i][j] * bwpixelbuffer[ARRAY(x + i, y + j)].red;
+				}
+			}
+			gradient = sqrt(pow(hx, 2) + pow(hy, 2));
+			if (gradient > 4055 / 20)
+			{
+				gradient = clampvalue<int>(gradient, 0, 4055);
+				pixelbuffer[ARRAY(x, y)].red = 0;
+				pixelbuffer[ARRAY(x, y)].blue = 0;
+				pixelbuffer[ARRAY(x, y)].green = 0;
+			}
+		}
+	}
+}
 
 float ComputeDetailForToonTexLookup(float ndote, float r)
 {

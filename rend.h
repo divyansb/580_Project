@@ -102,5 +102,6 @@ public:
 	void GzRender::ShadingEquation(GzCoord norm, float pixelColor[3], GzColor texColor = NULL);
 	void GzRender::VanillaToonShadingEquation(GzCoord norm, float color[3], GzColor texColor = NULL);
 	void GzRender::XToonShadingEquation(GzCoord norm, float color[3], ToonShadingType toonShadingType);
+	void GzRender::OutlineForToonShading();
 };
 #endif
