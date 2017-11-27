@@ -855,12 +855,11 @@ void GzRender::XToonShadingEquation(GzCoord norm, float color[3], ToonShadingTyp
 		float percentageBackground[3] = { toonTexLookupColor[RED], toonTexLookupColor[GREEN], toonTexLookupColor[BLUE] };
 		float percentageTexture[3] = { 1 - toonTexLookupColor[RED], 1 - toonTexLookupColor[GREEN], 1 - toonTexLookupColor[BLUE] };
 
-		GzColor vanillaToonShadeColor;
-		VanillaToonShadingEquation(norm, vanillaToonShadeColor);
+		GzColor ObjColor = {1, 1, 1};
 
-		color[RED] = percentageTexture[RED] * vanillaToonShadeColor[RED] + percentageBackground[RED] * BgColor[RED];
-		color[GREEN] = percentageTexture[GREEN] * vanillaToonShadeColor[GREEN] + percentageBackground[GREEN] * BgColor[GREEN];
-		color[BLUE] = percentageTexture[BLUE] * vanillaToonShadeColor[BLUE] + percentageBackground[BLUE] * BgColor[BLUE];
+		color[RED] = percentageTexture[RED] * ObjColor[RED] + percentageBackground[RED] * BgColor[RED];
+		color[GREEN] = percentageTexture[GREEN] * ObjColor[GREEN] + percentageBackground[GREEN] * BgColor[GREEN];
+		color[BLUE] = percentageTexture[BLUE] * ObjColor[BLUE] + percentageBackground[BLUE] * BgColor[BLUE];
 	}
 	else
 	{
